@@ -1,0 +1,39 @@
+script 
+now works as a script in the browser (e.g., in a <script> tag or Node.js with a bundler). But for full functionality, integrate it like this (in public/index.html or a test script):
+
+
+<!DOCTYPE html>
+<html>
+<head><title>Harmony Test</title></head>
+<body>
+  <script>
+    // Paste the HarmonyClient class here (from App.js above)
+
+    async function testHarmony() {
+      const harmony = new HarmonyClient('http://localhost:8000');
+      await harmony.init("gpt2", "sentence-transformers/all-MiniLM-L6-v2", "gpt2", true);
+
+      const context = `Harmony is an AI framework...`;  // Your context
+      await harmony.memorize_context(context, "harmony_docs", true);
+
+      const response1 = await harmony.chat("What is Harmony?", "memorag", 100);
+      console.log("Response:", response1);
+
+      const response2 = await harmony.chat("Summarize the features.", "summarize", 50);
+      console.log("Summary:", response2);
+
+      const response3 = await harmony.chat("Tell me a joke.", "chat");
+      console.log("Joke:", response3);
+
+      await harmony.save_session("my_session");
+      const loaded = await harmony.load_session("my_session");
+      console.log("Loaded session ID:", loaded.new_session_id);
+
+      const stats = await harmony.get_stats();
+      console.log("Stats:", stats);
+    }
+
+    testHarmony().catch(console.error);
+  </script>
+</body>
+</html>
