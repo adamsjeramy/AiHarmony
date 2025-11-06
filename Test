@@ -1,0 +1,71 @@
+ai harmony is a ai assistant model that also remembers geneology of family and provides a living legacy long after demise 
+npm install @xenova/transformers.
+
+pure client..
+
+import { pipeline, env } from '@xenova/transformers';
+
+// Init env for browser
+env.allowLocalModels = false;  // Use remote for speed
+
+class HarmonyJS {
+  constructor() {
+    this.generator = null;
+    this.embedder = null;
+    this.chunks = [];
+  }
+
+  async init() {
+    this.embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    this.generator = await pipeline('text-generation', 'Xenova/gpt2');
+  }
+
+  async memorize_context(context, context_name) {
+    // Simple split (no tiktoken)
+    this.chunks = context.match(/.{1,512}/g) || [context];  // Chunk by chars
+    console.log(`Memorized ${this.chunks.length} chunks for ${context_name}`);
+  }
+
+  async chat(query, task_type = "memorag", max_new_tokens = 50) {
+    if (task_type === "chat" || this.chunks.length === 0) {
+      const output = await this.generator(query, { max_new_tokens, do_sample: true });
+      return output[0].generated_text.slice(query.length);
+    }
+
+    // Simple retrieval: Embed query, find similar chunks (cosine sim)
+    const queryEmb = await this.embedder(query, { pooling: 'mean', normalize: true });
+    let bestChunk = this.chunks[0];
+    let bestScore = 0;
+    for (const chunk of this.chunks) {
+      const chunkEmb = await this.embedder(chunk, { pooling: 'mean', normalize: true });
+      const score = this.cosineSimilarity(queryEmb.data, chunkEmb.data);
+      if (score > bestScore) {
+        bestScore = score;
+        bestChunk = chunk;
+      }
+    }
+
+    const ragPrompt = `Context: ${bestChunk}\nQuestion: ${query}\nAnswer:`;
+    const output = await this.generator(ragPrompt, { max_new_tokens });
+    return output[0].generated_text.slice(ragPrompt.length);
+
+    // For summarize: Just generate on all chunks joined
+  }
+
+  // ... (save/load as localStorage for sessions)
+  cosineSimilarity(a, b) {
+    const dot = a[0].reduce((sum, val, i) => sum + val * b[0][i], 0);
+    const magA = Math.sqrt(a[0].reduce((sum, val) => sum + val * val, 0));
+    const magB = Math.sqrt(b[0].reduce((sum, val) => sum + val * val, 0));
+    return dot / (magA * magB);
+  }
+
+  async get_stats() {
+    return { chunks_count: this.chunks.length, history_length: 0 };  // Simplified
+  }
+}
+
+// Usage (in component or script)
+const harmony = new HarmonyJS();
+await harmony.init();
+// ... rest as before
