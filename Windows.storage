@@ -1,0 +1,133 @@
+  // 1. CORRECTED loadData
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Use localStorage.getItem (it's synchronous)
+      const userProfileValue = localStorage.getItem('legacy-user-profile');
+      
+      if (userProfileValue) {
+        const profile = JSON.parse(userProfileValue); // Just parse the value
+        setUserName(profile.name);
+        setFamilyCode(profile.familyCode);
+        setHasFamily(true);
+        // Pass the code to the corrected loadFamilyData
+        loadFamilyData(profile.familyCode); 
+      } else {
+        setHasFamily(false);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setHasFamily(false);
+    }
+    setIsLoading(false);
+  };
+
+  // 2. CORRECTED loadFamilyData
+  const loadFamilyData = (code) => { // No 'async' needed
+    try {
+      // Read all items from localStorage
+      const membersData = localStorage.getItem('fam-' + code + '-members');
+      const storiesData = localStorage.getItem('fam-' + code + '-stories');
+      const eventsData = localStorage.getItem('fam-' + code + '-events');
+      const familyMembersData = localStorage.getItem('fam-' + code + '-fammembers');
+
+      // Parse the data (or default to empty array)
+      setMembers(membersData ? JSON.parse(membersData) : []);
+      setStories(storiesData ? JSON.parse(storiesData) : []);
+      setEvents(eventsData ? JSON.parse(eventsData) : []);
+      setFamilyMembers(familyMembersData ? JSON.parse(familyMembersData) : []);
+    } catch (error) {
+      console.error('Error loading family data:', error);
+    }
+  };
+
+  // 3. CORRECTED createFamily
+  const createFamily = async (name) => { // Keep async for consistency if you add other async ops
+    const code = generateFamilyCode();
+    const profile = {
+      name,
+      familyCode: code,
+      role: 'admin',
+      joinedAt: new Date().toISOString()
+    };
+
+    try {
+      // Use localStorage.setItem
+      localStorage.setItem('legacy-user-profile', JSON.stringify(profile));
+      
+      const initialFamilyMembers = [{
+        id: Date.now().toString(),
+        name,
+        role: 'admin',
+        joinedAt: new Date().toISOString()
+      }];
+      
+      // Use localStorage.setItem
+      localStorage.setItem('fam-' + code + '-fammembers', JSON.stringify(initialFamilyMembers));
+      localStorage.setItem('fam-' + code + '-members', JSON.stringify([]));
+      localStorage.setItem('fam-' + code + '-stories', JSON.stringify([]));
+      localStorage.setItem('fam-' + code + '-events', JSON.stringify([]));
+
+      setUserName(name);
+      setFamilyCode(code);
+      setFamilyMembers(initialFamilyMembers);
+      setHasFamily(true);
+    } catch (error) {
+      console.error('Error creating family:', error);
+      alert('Failed to create family. Please try again.');
+    }
+  };
+
+  // 4. CORRECTED joinFamily
+  const joinFamily = async (code, name) => {
+    try {
+      // Use localStorage.getItem
+      const familyExistsValue = localStorage.getItem('fam-' + code + '-fammembers');
+      
+      if (!familyExistsValue) {
+        alert('Invalid family code. Please check and try again.');
+        return;
+      }
+
+      const profile = {
+        name,
+        familyCode: code,
+        role: 'member',
+        joinedAt: new Date().toISOString()
+      };
+
+      // Use localStorage.setItem
+      localStorage.setItem('legacy-user-profile', JSON.stringify(profile));
+
+      const existingMembers = JSON.parse(familyExistsValue);
+      const newMember = {
+        id: Date.now().toString(),
+        name,
+        role: 'member',
+        joinedAt: new Date().toISOString()
+      };
+      
+      const updatedMembers = [...existingMembers, newMember];
+      // Use localStorage.setItem
+      localStorage.setItem('fam-' + code + '-fammembers', JSON.stringify(updatedMembers));
+
+      setUserName(name);
+      setFamilyCode(code);
+      setHasFamily(true);
+      setShowJoinModal(false);
+      loadFamilyData(code); // Call the corrected, synchronous function
+    } catch (error) {
+      console.error('Error joining family:', error);
+      alert('Failed to join family. Please try again.');
+    }
+  };
+
+  // 5. CORRECTED saveData
+  const saveData = async (type, data) => {
+    try {
+      // Use localStorage.setItem
+      localStorage.setItem('fam-' + familyCode + '-' + type, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving data:', error);
+    }
+  };
